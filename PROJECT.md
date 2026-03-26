@@ -12,7 +12,7 @@ Tired of forgetting what you ordered last time or not knowing the exact product 
 - **Framework**: Next.js 16 (App Router) + TypeScript + React 19 + Tailwind CSS v4
 - **Auth**: NextAuth.js v5 (beta) with Google OAuth (gmail.readonly scope)
 - **Database**: Turso (cloud SQLite) with raw libsql queries
-- **Hosting**: Vercel → `carted.kevinauerbach.com`
+- **Hosting**: Vercel → `carted.megandkev.co`
 - **Email**: Gmail REST API (no SDK)
 
 ## Key Features
@@ -29,7 +29,7 @@ Tired of forgetting what you ordered last time or not knowing the exact product 
 https://github.com/2kbach/CARTED
 
 ## Deployment
-- **Primary**: carted.kevinauerbach.com (Vercel)
+- **Primary**: carted.megandkev.co (Vercel)
 - **Vercel Project**: carted
 
 ## Changelog
