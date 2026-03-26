@@ -1,0 +1,107 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  image         String?
+  accessToken   String?
+  refreshToken  String?
+  tokenExpiry   DateTime?
+  lastScanAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orders        AmazonOrder[]
+  shoppingItems ShoppingListItem[]
+  pairCodes     PairCode[]
+  linksAsA      UserLink[] @relation("userA")
+  linksAsB      UserLink[] @relation("userB")
+}
+
+model AmazonOrder {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  sourceEmailId String   @unique
+  orderNumber   String?
+  orderDate     DateTime
+  rawEmailBody  String?
+  createdAt     DateTime @default(now())
+
+  items         AmazonOrderItem[]
+
+  @@index([userId])
+  @@index([orderDate])
+}
+
+model AmazonOrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      AmazonOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name       String
+  nameLower  String
+  price      Int?        // cents
+  quantity   Int         @default(1)
+  productUrl String?
+  imageUrl   String?
+  createdAt  DateTime @default(now())
+
+  shoppingItems ShoppingListItem[]
+
+  @@index([orderId])
+  @@index([nameLower])
+}
+
+model ShoppingListItem {
+  id                 String   @id @default(cuid())
+  addedByUserId      String
+  addedBy            User     @relation(fields: [addedByUserId], references: [id])
+  name               String
+  amazonOrderItemId  String?
+  amazonOrderItem    AmazonOrderItem? @relation(fields: [amazonOrderItemId], references: [id])
+  productUrl         String?
+  isCompleted        Boolean  @default(false)
+  completedAt        DateTime?
+  completedByOrderId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([addedByUserId])
+  @@index([isCompleted])
+}
+
+model PairCode {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  creatorUserId String
+  creator       User      @relation(fields: [creatorUserId], references: [id], onDelete: Cascade)
+  expiresAt     DateTime
+  usedAt        DateTime?
+  usedByUserId  String?
+  createdAt     DateTime  @default(now())
+
+  @@index([creatorUserId])
+  @@index([expiresAt])
+}
+
+model UserLink {
+  id        String   @id @default(cuid())
+  userAId   String
+  userBId   String
+  userA     User     @relation("userA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB     User     @relation("userB", fields: [userBId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
