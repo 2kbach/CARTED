@@ -105,24 +105,52 @@ function extractItemsFromText(text: string): ParsedOrderItem[] {
 }
 
 /**
- * Extract product URLs from HTML body — look for /dp/ASIN or /gp/product/ASIN links
+ * Resolve an Amazon redirect URL to the actual destination.
+ * Amazon wraps all email links through /gp/r.html?...&U=encoded_url
+ */
+function resolveAmazonRedirect(href: string): string {
+  try {
+    const u = new URL(href);
+    // Check for redirect wrapper: /gp/r.html with U= param
+    if (u.pathname === "/gp/r.html" || u.pathname === "/gp/r.html/") {
+      const destination = u.searchParams.get("U");
+      if (destination) return destination;
+    }
+    return href;
+  } catch {
+    // Try to extract U= parameter with regex as fallback
+    const uMatch = href.match(/[&?]U=(https?%3A%2F%2F[^&]+)/i);
+    if (uMatch) return decodeURIComponent(uMatch[1]);
+    return href;
+  }
+}
+
+/**
+ * Extract product URLs from HTML body — look for /dp/ASIN or /gp/product/ASIN links.
+ * Amazon wraps all links through /gp/r.html redirects, so we resolve those first.
  */
 function extractProductUrls(html: string): Map<string, string> {
   const urlMap = new Map<string, string>();
 
-  // Find product links with their anchor text
-  const linkRegex = /href="(https?:\/\/(?:www\.)?amazon\.com\/[^"]*(?:\/gp\/product\/|\/dp\/)[^"]*)"[^>]*>([^<]+)/gi;
+  // Find all href links with their anchor text
+  const linkRegex = /href="([^"]*amazon\.com[^"]*)"[^>]*>([^<]+)/gi;
   let match;
 
   while ((match = linkRegex.exec(html)) !== null) {
-    const url = match[1];
+    const rawUrl = match[1].replace(/&amp;/g, "&");
     const text = match[2].trim();
 
     if (text.length < 3) continue;
-    if (/view order|track|manage|return|cancel|write a review|buy it again/i.test(text)) continue;
+    if (/view order|track|manage|return|cancel|write a review|buy it again|your orders|your account|buy again/i.test(text)) continue;
 
-    const cleanUrl = cleanAmazonUrl(url);
-    urlMap.set(text.toLowerCase(), cleanUrl);
+    // Resolve redirect to get the actual URL
+    const resolvedUrl = resolveAmazonRedirect(rawUrl);
+
+    // Check if the resolved URL contains a product identifier
+    if (/\/dp\/[A-Z0-9]{10}|\/gp\/product\/[A-Z0-9]{10}/i.test(resolvedUrl)) {
+      const cleanUrl = cleanAmazonUrl(resolvedUrl);
+      urlMap.set(text.toLowerCase(), cleanUrl);
+    }
   }
 
   return urlMap;
@@ -252,13 +280,28 @@ export function parseAmazonEmail(email: ParsedEmail): ParsedOrder | null {
 
       for (let i = 0; i < items.length; i++) {
         // Try to match item name to a product URL
-        if (!items[i].productUrl) {
+        if (!items[i].productUrl || items[i].productUrl?.includes("/s?k=")) {
+          const itemLower = items[i].name.toLowerCase();
           for (const [text, url] of urls) {
-            if (items[i].name.toLowerCase().includes(text) || text.includes(items[i].name.toLowerCase())) {
+            // Exact or substring match
+            if (itemLower.includes(text) || text.includes(itemLower)) {
+              items[i].productUrl = url;
+              break;
+            }
+            // Word overlap match — if 3+ words match, consider it the same product
+            const itemWords = new Set(itemLower.split(/\s+/).filter(w => w.length > 2));
+            const linkWords = text.split(/\s+/).filter(w => w.length > 2);
+            const overlap = linkWords.filter(w => itemWords.has(w)).length;
+            if (overlap >= 3 || (overlap >= 2 && linkWords.length <= 4)) {
               items[i].productUrl = url;
               break;
             }
           }
+        }
+
+        // If only one item and one URL, just assign it
+        if (items.length === 1 && urls.size >= 1 && (!items[i].productUrl || items[i].productUrl?.includes("/s?k="))) {
+          items[i].productUrl = urls.values().next().value!;
         }
 
         // Assign images in order
