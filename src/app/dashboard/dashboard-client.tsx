@@ -259,16 +259,16 @@ export default function DashboardClient({ user }: { user: User }) {
         {uncompleted.map((item) => (
           <div
             key={item.id}
-            className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100"
+            className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 overflow-hidden"
           >
             <button
               onClick={() => toggleItem(item.id, item.isCompleted)}
               className="w-6 h-6 rounded-full border-2 border-gray-300 flex-shrink-0 hover:border-black transition-colors"
             />
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <button
                 onClick={() => setSelectedProduct(item.name)}
-                className="font-medium text-sm truncate block text-left hover:underline"
+                className="font-medium text-sm w-full text-left hover:underline truncate block"
               >
                 {item.name}
               </button>
@@ -281,26 +281,28 @@ export default function DashboardClient({ user }: { user: User }) {
                 </span>
               </div>
             </div>
-            {item.productUrl && (
-              <a
-                href={getAmazonLink(item.productUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-orange-500 hover:text-orange-600 flex-shrink-0"
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {item.productUrl && (
+                <a
+                  href={getAmazonLink(item.productUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-orange-500 hover:text-orange-600"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              )}
+              <button
+                onClick={() => deleteItem(item.id)}
+                className="text-gray-300 hover:text-red-400"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </a>
-            )}
-            <button
-              onClick={() => deleteItem(item.id)}
-              className="text-gray-300 hover:text-red-400 flex-shrink-0"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -369,7 +371,7 @@ export default function DashboardClient({ user }: { user: User }) {
       )}
 
       {/* Version */}
-      <p className="text-center text-xs text-gray-300 mt-8">v1.0.0</p>
+      <p className="text-center text-xs text-gray-300 mt-8">v1.0.2</p>
     </div>
   );
 }
