@@ -16,14 +16,20 @@ export interface ParsedOrder {
   rawEmailBody: string | null;
 }
 
-function extractOrderNumber(subject: string, html: string | null): string | null {
-  // Try subject line first: "Your Amazon.com order of ... (#111-1234567-1234567)"
-  const subjectMatch = subject.match(/#(\d{3}-\d{7}-\d{7})/);
+function extractOrderNumber(subject: string, text: string | null, html: string | null): string | null {
+  // Amazon order number format: 111-1234567-1234567
+  const pattern = /(\d{3}-\d{7}-\d{7})/;
+
+  const subjectMatch = subject.match(pattern);
   if (subjectMatch) return subjectMatch[1];
 
-  // Try HTML body
+  if (text) {
+    const textMatch = text.match(pattern);
+    if (textMatch) return textMatch[1];
+  }
+
   if (html) {
-    const htmlMatch = html.match(/(\d{3}-\d{7}-\d{7})/);
+    const htmlMatch = html.match(pattern);
     if (htmlMatch) return htmlMatch[1];
   }
 
@@ -36,143 +42,98 @@ function extractOrderDate(dateHeader: string): Date {
   return new Date();
 }
 
-function extractItems(html: string | null, subject: string): ParsedOrderItem[] {
-  if (!html) {
-    // Fallback: extract item name from subject
-    // Subject format: "Your Amazon.com order of [Item Name]..."
-    const subjectMatch = subject.match(/order of (.+?)(?:\s*\(#|$)/i);
-    const name = subjectMatch ? subjectMatch[1].trim() : subject.replace(/^.*?Ordered:\s*/i, "").trim();
-    return name
-      ? [{ name, price: null, quantity: 1, productUrl: null, imageUrl: null }]
-      : [];
-  }
-
+/**
+ * Primary parser: extract items from plain text body.
+ * Amazon order emails use this format:
+ *
+ * * Item Name Here
+ *   Quantity: 1
+ *   8.27 USD
+ */
+function extractItemsFromText(text: string): ParsedOrderItem[] {
   const items: ParsedOrderItem[] = [];
 
-  // Strategy 1: Look for product links with nearby text
-  // Amazon order emails typically have product links like /gp/product/ or /dp/
-  const productLinkRegex = /href="(https?:\/\/(?:www\.)?amazon\.com\/[^"]*(?:\/gp\/product\/|\/dp\/)[^"]*)"[^>]*>([^<]+)/gi;
-  let match;
+  // Pattern: lines starting with "* " are item names
+  // Followed by optional "Quantity: N" and "X.XX USD" lines
+  const lines = text.split("\n").map((l) => l.trim());
 
-  while ((match = productLinkRegex.exec(html)) !== null) {
-    const url = match[1];
-    let name = match[2].trim();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
 
-    // Skip generic links like "View order", "Track package"
-    if (
-      /view order|track|manage|return|cancel|write a review|buy it again/i.test(name) ||
-      name.length < 3
-    ) {
-      continue;
-    }
+    // Match item lines starting with "* "
+    if (line.startsWith("* ")) {
+      const name = line.substring(2).trim();
+      if (!name || name.length < 3) continue;
 
-    // Clean up HTML entities
-    name = decodeHtmlEntities(name);
+      // Skip generic lines
+      if (/^(view|track|manage|return|cancel|buy it again)/i.test(name)) continue;
 
-    // Check for duplicates
-    if (items.some((i) => i.productUrl === url)) continue;
+      let quantity = 1;
+      let price: number | null = null;
 
-    items.push({
-      name,
-      price: null,
-      quantity: 1,
-      productUrl: cleanAmazonUrl(url),
-      imageUrl: null,
-    });
-  }
+      // Look at the next few lines for quantity and price
+      for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+        const nextLine = lines[j];
 
-  // Strategy 2: If no product links found, try to extract from structured data
-  if (items.length === 0) {
-    // Look for item names near price patterns
-    const itemBlockRegex = /(?:itemName|product[_-]?name|item[_-]?title)[^>]*>([^<]{5,100})</gi;
-    while ((match = itemBlockRegex.exec(html)) !== null) {
-      const name = decodeHtmlEntities(match[1].trim());
-      if (name && !items.some((i) => i.name === name)) {
-        items.push({
-          name,
-          price: null,
-          quantity: 1,
-          productUrl: null,
-          imageUrl: null,
-        });
+        // Check for quantity
+        const qtyMatch = nextLine.match(/quantity:\s*(\d+)/i);
+        if (qtyMatch) {
+          quantity = parseInt(qtyMatch[1]);
+        }
+
+        // Check for price (X.XX USD)
+        const priceMatch = nextLine.match(/(\d+\.\d{2})\s*USD/i);
+        if (priceMatch) {
+          price = Math.round(parseFloat(priceMatch[1]) * 100);
+        }
+
+        // Stop if we hit another item or a blank section
+        if (nextLine.startsWith("* ") || nextLine.startsWith("Grand Total")) break;
       }
-    }
-  }
 
-  // Strategy 3: Fall back to subject line extraction
-  if (items.length === 0) {
-    const subjectMatch = subject.match(/order of (.+?)(?:\s*\(#|$)/i);
-    if (subjectMatch) {
       items.push({
-        name: subjectMatch[1].trim(),
-        price: null,
-        quantity: 1,
+        name: decodeHtmlEntities(name),
+        price,
+        quantity,
         productUrl: null,
         imageUrl: null,
       });
     }
   }
 
-  // Extract prices — look for $X.XX patterns near items
-  extractPrices(html, items);
-
-  // Extract quantities
-  extractQuantities(html, items);
-
-  // Extract image URLs
-  extractImages(html, items);
-
   return items;
 }
 
-function extractPrices(html: string, items: ParsedOrderItem[]): void {
-  // Look for price patterns: $12.99
-  const priceRegex = /\$(\d{1,5})\.(\d{2})/g;
-  const prices: number[] = [];
+/**
+ * Extract product URLs from HTML body — look for /dp/ASIN or /gp/product/ASIN links
+ */
+function extractProductUrls(html: string): Map<string, string> {
+  const urlMap = new Map<string, string>();
+
+  // Find product links with their anchor text
+  const linkRegex = /href="(https?:\/\/(?:www\.)?amazon\.com\/[^"]*(?:\/gp\/product\/|\/dp\/)[^"]*)"[^>]*>([^<]+)/gi;
   let match;
 
-  while ((match = priceRegex.exec(html)) !== null) {
-    const dollars = parseInt(match[1]);
-    const cents = parseInt(match[2]);
-    const total = dollars * 100 + cents;
-    // Skip very small amounts (likely tax/shipping) and very large (likely totals)
-    if (total >= 100 && total <= 200000) {
-      prices.push(total);
-    }
+  while ((match = linkRegex.exec(html)) !== null) {
+    const url = match[1];
+    const text = match[2].trim();
+
+    if (text.length < 3) continue;
+    if (/view order|track|manage|return|cancel|write a review|buy it again/i.test(text)) continue;
+
+    const cleanUrl = cleanAmazonUrl(url);
+    urlMap.set(text.toLowerCase(), cleanUrl);
   }
 
-  // Assign prices to items if we have a reasonable match
-  // For single-item orders, the most common price is likely the item price
-  if (items.length === 1 && prices.length > 0) {
-    // Use the first price found (usually the item price in Amazon emails)
-    items[0].price = prices[0];
-  } else if (items.length > 0 && prices.length >= items.length) {
-    // Try to assign first N prices to N items
-    for (let i = 0; i < items.length && i < prices.length; i++) {
-      items[i].price = prices[i];
-    }
-  }
+  return urlMap;
 }
 
-function extractQuantities(html: string, items: ParsedOrderItem[]): void {
-  // Look for "Qty: X" or "Quantity: X" patterns
-  const qtyRegex = /(?:qty|quantity)\s*:?\s*(\d+)/gi;
-  const quantities: number[] = [];
-  let match;
-
-  while ((match = qtyRegex.exec(html)) !== null) {
-    quantities.push(parseInt(match[1]));
-  }
-
-  for (let i = 0; i < items.length && i < quantities.length; i++) {
-    items[i].quantity = quantities[i];
-  }
-}
-
-function extractImages(html: string, items: ParsedOrderItem[]): void {
-  // Look for product images (Amazon CDN)
-  const imgRegex = /src="(https?:\/\/(?:m\.media-amazon|images-na\.ssl-images-amazon|images-eu\.ssl-images-amazon)\.com\/images\/[^"]+)"/gi;
+/**
+ * Extract product images from HTML body
+ */
+function extractProductImages(html: string): string[] {
   const images: string[] = [];
+  const imgRegex = /src="(https?:\/\/(?:m\.media-amazon|images-na\.ssl-images-amazon|images-eu\.ssl-images-amazon)\.com\/images\/[^"]+)"/gi;
   let match;
 
   while ((match = imgRegex.exec(html)) !== null) {
@@ -183,15 +144,47 @@ function extractImages(html: string, items: ParsedOrderItem[]): void {
     }
   }
 
-  for (let i = 0; i < items.length && i < images.length; i++) {
-    items[i].imageUrl = images[i];
+  return images;
+}
+
+/**
+ * Fallback: extract item name from email subject line
+ * Subject formats:
+ * - 'Ordered: "Item Name..."'
+ * - 'Ordered: 3 "Item Name..."'
+ * - 'Your Amazon.com order of Item Name (#111-...)'
+ */
+function extractItemFromSubject(subject: string): ParsedOrderItem | null {
+  // Try: Ordered: "Item Name..."
+  const quotedMatch = subject.match(/Ordered:?\s*(?:\d+\s+)?"([^"]+)/i);
+  if (quotedMatch) {
+    return {
+      name: quotedMatch[1].replace(/\.{3}$/, "").trim(),
+      price: null,
+      quantity: 1,
+      productUrl: null,
+      imageUrl: null,
+    };
   }
+
+  // Try: order of Item Name
+  const ofMatch = subject.match(/order of (.+?)(?:\s*\(#|$)/i);
+  if (ofMatch) {
+    return {
+      name: ofMatch[1].trim(),
+      price: null,
+      quantity: 1,
+      productUrl: null,
+      imageUrl: null,
+    };
+  }
+
+  return null;
 }
 
 function cleanAmazonUrl(url: string): string {
   try {
     const u = new URL(url);
-    // Keep just the product path, strip tracking params
     const pathMatch = u.pathname.match(/(\/(?:dp|gp\/product)\/[A-Z0-9]{10})/);
     if (pathMatch) {
       return `https://www.amazon.com${pathMatch[1]}`;
@@ -211,19 +204,73 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ")
     .replace(/&#x27;/g, "'")
+    .replace(/®/g, "®")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 export function parseAmazonEmail(email: ParsedEmail): ParsedOrder | null {
   try {
-    const orderNumber = extractOrderNumber(email.subject, email.htmlBody);
+    const orderNumber = extractOrderNumber(email.subject, email.textBody, email.htmlBody);
     const orderDate = extractOrderDate(email.date);
-    const items = extractItems(email.htmlBody, email.subject);
+
+    // Strategy 1: Parse from plain text body (most reliable for modern Amazon emails)
+    let items: ParsedOrderItem[] = [];
+    if (email.textBody) {
+      items = extractItemsFromText(email.textBody);
+    }
+
+    // Strategy 2: If no items from text, try HTML product links
+    if (items.length === 0 && email.htmlBody) {
+      const urls = extractProductUrls(email.htmlBody);
+      for (const [text, url] of urls) {
+        items.push({
+          name: text,
+          price: null,
+          quantity: 1,
+          productUrl: url,
+          imageUrl: null,
+        });
+      }
+    }
+
+    // Strategy 3: Fall back to subject line
+    if (items.length === 0) {
+      const subjectItem = extractItemFromSubject(email.subject);
+      if (subjectItem) items.push(subjectItem);
+    }
 
     if (items.length === 0) {
       console.warn(`[parser] No items found in email ${email.id}: ${email.subject}`);
       return null;
+    }
+
+    // Enrich with URLs and images from HTML
+    if (email.htmlBody) {
+      const urls = extractProductUrls(email.htmlBody);
+      const images = extractProductImages(email.htmlBody);
+
+      for (let i = 0; i < items.length; i++) {
+        // Try to match item name to a product URL
+        if (!items[i].productUrl) {
+          for (const [text, url] of urls) {
+            if (items[i].name.toLowerCase().includes(text) || text.includes(items[i].name.toLowerCase())) {
+              items[i].productUrl = url;
+              break;
+            }
+          }
+        }
+
+        // Assign images in order
+        if (!items[i].imageUrl && i < images.length) {
+          items[i].imageUrl = images[i];
+        }
+      }
+
+      // Also try to extract the "View order" URL as a fallback product link
+      if (items.length === 1 && !items[0].productUrl && orderNumber) {
+        items[0].productUrl = `https://www.amazon.com/your-orders/order-details?orderID=${orderNumber}`;
+      }
     }
 
     return {
@@ -231,7 +278,7 @@ export function parseAmazonEmail(email: ParsedEmail): ParsedOrder | null {
       orderNumber,
       orderDate,
       items,
-      rawEmailBody: email.htmlBody,
+      rawEmailBody: email.htmlBody ?? email.textBody,
     };
   } catch (error) {
     console.error(`[parser] Failed to parse email ${email.id}:`, error);
@@ -250,8 +297,6 @@ export function parseAmazonEmails(emails: ParsedEmail[]): ParsedOrder[] {
 
 /** Generate an Amazon deep link that opens the app on iOS */
 export function getAmazonAppLink(productUrl: string): string {
-  // On iOS, amazon:// scheme opens the Amazon app
-  // Fallback to web URL if app not installed
   try {
     const u = new URL(productUrl);
     return `amazon://${u.pathname}`;

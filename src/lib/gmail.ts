@@ -66,6 +66,7 @@ export interface ParsedEmail {
   from: string;
   date: string;
   snippet: string;
+  textBody: string | null;
   htmlBody: string | null;
 }
 
@@ -134,6 +135,7 @@ export async function fetchEmailContent(
     from: getHeader(headers, "From") ?? "",
     date: getHeader(headers, "Date") ?? "",
     snippet: message.snippet,
+    textBody: findPartByMimeType(message.payload, "text/plain"),
     htmlBody: findPartByMimeType(message.payload, "text/html"),
   };
 }

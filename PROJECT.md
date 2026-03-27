@@ -34,6 +34,7 @@ https://github.com/2kbach/CARTED
 
 ## Changelog
 - ✅ **2026-03-26 v1.0.0** — Initial build: Next.js project, auth, Turso DB, Gmail scraper, Amazon email parser, shopping list API, search/suggest, dashboard UI, product detail modal, price history, auto-complete, cron setup, pair code system, deployed to Vercel.
+- ✅ **2026-03-26 v1.0.0** — DNS + OAuth redirect configured for carted.megandkev.co.
 
 ## Case Study
 
