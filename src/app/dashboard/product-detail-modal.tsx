@@ -24,7 +24,7 @@ export default function ProductDetailModal({
   useEffect(() => {
     async function loadHistory() {
       const res = await fetch(
-        `/api/orders/${encodeURIComponent(productName)}/history`
+        `/api/orders/history?name=${encodeURIComponent(productName)}`
       );
       if (res.ok) {
         const data = await res.json();
