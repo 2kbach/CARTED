@@ -38,6 +38,8 @@ https://github.com/2kbach/CARTED
 - ❌ **2026-03-26 v1.0.0** — Parser failed to extract items from Amazon emails — only looked at HTML for product links, but modern Amazon emails use plain text format.
 - ✅ **2026-03-26 v1.0.1** — Fixed parser to read plain text body (`* Item Name / Quantity: N / X.XX USD` format). Falls back to HTML links, then subject line. Scan now working — items scraping correctly.
 - ✅ **2026-03-27 v1.0.1** — Full scan (394 emails, 669 items) and auto-suggest confirmed working. Search/autocomplete returns matching Amazon order history items.
+- ✅ **2026-03-27 v1.0.3** — Fixed multi-order email parsing. Amazon batches multiple orders in one email — parser now splits by "Order #" sections so items map to correct orders. Broadened Gmail query to catch older subject formats ("Your Amazon.com order #...").
+- ✅ **2026-03-27 v1.0.5** — Added CARTED app icon as favicon and Apple touch icon.
 
 ## Case Study
 

@@ -272,28 +272,30 @@ export default function DashboardClient({ user }: { user: User }) {
               >
                 {item.name}
               </button>
-              <div className="flex items-center gap-1 mt-0.5">
+              <div className="flex items-center gap-1.5 mt-0.5">
                 {item.addedBy.image && (
                   <img src={item.addedBy.image} alt="" className="w-4 h-4 rounded-full" />
                 )}
                 <span className="text-xs text-gray-400">
                   {item.addedBy.name?.split(" ")[0]}
                 </span>
+                {item.productUrl && (
+                  <>
+                    <span className="text-xs text-gray-300">·</span>
+                    <a
+                      href={getAmazonLink(item.productUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs text-blue-500 hover:underline"
+                    >
+                      View on Amazon
+                    </a>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {item.productUrl && (
-                <a
-                  href={getAmazonLink(item.productUrl)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-orange-500 hover:text-orange-600"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              )}
               <button
                 onClick={() => deleteItem(item.id)}
                 className="text-gray-300 hover:text-red-400"
