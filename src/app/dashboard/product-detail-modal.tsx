@@ -146,14 +146,14 @@ export default function ProductDetailModal({
                         ${(entry.price / 100).toFixed(2)}
                       </div>
                     )}
-                    {entry.productUrl && (
+                    {entry.orderNumber && (
                       <a
-                        href={entry.productUrl}
+                        href={`https://www.amazon.com/your-orders/order-details?orderID=${entry.orderNumber}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-orange-500 hover:underline"
                       >
-                        View on Amazon
+                        View Order
                       </a>
                     )}
                   </div>

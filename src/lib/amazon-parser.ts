@@ -267,9 +267,11 @@ export function parseAmazonEmail(email: ParsedEmail): ParsedOrder | null {
         }
       }
 
-      // Also try to extract the "View order" URL as a fallback product link
-      if (items.length === 1 && !items[0].productUrl && orderNumber) {
-        items[0].productUrl = `https://www.amazon.com/your-orders/order-details?orderID=${orderNumber}`;
+      // Fallback: generate Amazon search URL for the product name
+      for (const item of items) {
+        if (!item.productUrl) {
+          item.productUrl = `https://www.amazon.com/s?k=${encodeURIComponent(item.name)}`;
+        }
       }
     }
 
