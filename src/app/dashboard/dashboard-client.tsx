@@ -342,7 +342,7 @@ export default function DashboardClient({ user }: { user: User }) {
             </button>
             <button
               onClick={deleteAllCompleted}
-              className="text-xs text-red-400 hover:text-red-600"
+              className="text-xs text-blue-400 hover:text-blue-600"
             >
               Delete all
             </button>
