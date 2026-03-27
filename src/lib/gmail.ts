@@ -71,7 +71,12 @@ export interface ParsedEmail {
 }
 
 function buildAmazonSearchQuery(afterDate?: Date): string {
-  let query = "from:auto-confirm@amazon.com subject:Ordered";
+  // Match all Amazon order confirmation subject formats:
+  // - "Ordered: 3 'Gillette Clinical...'" (current format)
+  // - "Your Amazon.com order #113-7381368-4060204" (older format)
+  // - "Your Amazon.com order" (mid-era format)
+  // Filter by sender only — the parser validates order content in the body
+  let query = "from:auto-confirm@amazon.com {subject:Ordered subject:(Your Amazon.com order)}";
   if (afterDate) {
     const formatted = afterDate.toISOString().split("T")[0].replace(/-/g, "/");
     query += ` after:${formatted}`;
