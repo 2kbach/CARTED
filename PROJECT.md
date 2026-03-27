@@ -40,6 +40,7 @@ https://github.com/2kbach/CARTED
 - ✅ **2026-03-27 v1.0.1** — Full scan (394 emails, 669 items) and auto-suggest confirmed working. Search/autocomplete returns matching Amazon order history items.
 - ✅ **2026-03-27 v1.0.3** — Fixed multi-order email parsing. Amazon batches multiple orders in one email — parser now splits by "Order #" sections so items map to correct orders. Broadened Gmail query to catch older subject formats ("Your Amazon.com order #...").
 - ✅ **2026-03-27 v1.0.5** — Added CARTED app icon as favicon and Apple touch icon.
+- ✅ **2026-03-27 v1.0.6** — Replaced red external link icon with "View on Amazon" text link on the avatar/name row.
 
 ## Case Study
 
@@ -52,6 +53,7 @@ https://github.com/2kbach/CARTED
 > Key UX decision: the search input does double duty — it searches previous orders for autocomplete suggestions, and if nothing matches, the typed text becomes a new shopping list item. This means the most common flow (re-ordering something) is faster than adding something new.
 
 ## Feature Parking Lot
+- **2026-03-27** — Be able to delete completed items *(submitted via PARKED)*
 - **2026-03-26** — Phase 2: Amazon Product Advertising API for suggesting products not in order history *(planned)*
 - **2026-03-26** — Purchase analytics dashboard (spending by category, monthly totals) *(suggested by Claude)*
 - **2026-03-26** — Shared list notifications (push/SMS when partner adds an item) *(suggested by Claude)*

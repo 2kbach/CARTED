@@ -117,6 +117,18 @@ export default function DashboardClient({ user }: { user: User }) {
     loadItems();
   };
 
+  const deleteCompletedItem = async (id: string, name: string) => {
+    if (!window.confirm(`Delete "${name}"?`)) return;
+    await fetch(`/api/shopping-list/${id}`, { method: "DELETE" });
+    loadItems();
+  };
+
+  const deleteAllCompleted = async () => {
+    if (!window.confirm(`Delete all ${completed.length} completed items?`)) return;
+    await Promise.all(completed.map((item) => fetch(`/api/shopping-list/${item.id}`, { method: "DELETE" })));
+    loadItems();
+  };
+
   const runScan = async (initial: boolean = false) => {
     setIsScanning(true);
     setScanResult(null);
@@ -312,21 +324,29 @@ export default function DashboardClient({ user }: { user: User }) {
       {/* Completed Section */}
       {completed.length > 0 && (
         <div className="mt-6">
-          <button
-            onClick={() => setShowCompleted(!showCompleted)}
-            className="text-sm text-gray-400 font-medium mb-2 flex items-center gap-1"
-          >
-            <svg
-              className={`w-4 h-4 transition-transform ${showCompleted ? "rotate-90" : ""}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+          <div className="flex items-center justify-between mb-2">
+            <button
+              onClick={() => setShowCompleted(!showCompleted)}
+              className="text-sm text-gray-400 font-medium flex items-center gap-1"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-            Completed ({completed.length})
-          </button>
+              <svg
+                className={`w-4 h-4 transition-transform ${showCompleted ? "rotate-90" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              Completed ({completed.length})
+            </button>
+            <button
+              onClick={deleteAllCompleted}
+              className="text-xs text-red-400 hover:text-red-600"
+            >
+              Delete all
+            </button>
+          </div>
 
           {showCompleted && (
             <div className="space-y-2">
@@ -357,6 +377,14 @@ export default function DashboardClient({ user }: { user: User }) {
                       </span>
                     </div>
                   </div>
+                  <button
+                    onClick={() => deleteCompletedItem(item.id, item.name)}
+                    className="text-gray-300 hover:text-red-400 flex-shrink-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               ))}
             </div>
