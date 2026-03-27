@@ -340,12 +340,14 @@ export default function DashboardClient({ user }: { user: User }) {
               </svg>
               Completed ({completed.length})
             </button>
-            <button
-              onClick={deleteAllCompleted}
-              className="text-xs text-blue-400 hover:text-blue-600"
-            >
-              Delete all
-            </button>
+            {showCompleted && (
+              <button
+                onClick={deleteAllCompleted}
+                className="text-xs text-blue-400 hover:text-blue-600"
+              >
+                Delete all
+              </button>
+            )}
           </div>
 
           {showCompleted && (
