@@ -173,16 +173,50 @@ export default function DashboardClient({ user }: { user: User }) {
     setIsScanning(true);
     setScanResult(null);
     try {
-      const endpoint = initial ? "/api/scan/initial" : "/api/scan";
-      const res = await fetch(endpoint, { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        setScanResult(
-          `Found ${data.emailsFound} emails, ${data.created} new orders, ${data.itemsCreated} items${data.autoCompleted ? `, ${data.autoCompleted} auto-completed` : ""}`
-        );
+      if (initial) {
+        // Paginated scan — loop until done
+        let pageToken: string | undefined;
+        let totalFound = 0;
+        let totalCreated = 0;
+        let totalItems = 0;
+        let batchNum = 0;
+
+        do {
+          batchNum++;
+          setScanResult(`Scanning batch ${batchNum}... (${totalFound} emails so far)`);
+
+          const res = await fetch("/api/scan/initial", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pageToken, totalFound }),
+          });
+          const data = await res.json();
+
+          if (!res.ok) {
+            setScanResult(`Error: ${data.error}`);
+            setIsScanning(false);
+            return;
+          }
+
+          totalFound = data.totalFound;
+          totalCreated += data.created;
+          totalItems += data.itemsCreated;
+          pageToken = data.nextPageToken;
+        } while (pageToken);
+
+        setScanResult(`Done! ${totalFound} emails, ${totalCreated} orders, ${totalItems} items`);
         loadItems();
       } else {
-        setScanResult(`Error: ${data.error}`);
+        const res = await fetch("/api/scan", { method: "POST" });
+        const data = await res.json();
+        if (res.ok) {
+          setScanResult(
+            `Found ${data.emailsFound} emails, ${data.created} new orders, ${data.itemsCreated} items${data.autoCompleted ? `, ${data.autoCompleted} auto-completed` : ""}`
+          );
+          loadItems();
+        } else {
+          setScanResult(`Error: ${data.error}`);
+        }
       }
     } catch {
       setScanResult("Scan failed");

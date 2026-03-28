@@ -42,6 +42,8 @@ https://github.com/2kbach/CARTED
 - ✅ **2026-03-27 v1.0.5** — Added CARTED app icon as favicon and Apple touch icon.
 - ✅ **2026-03-27 v1.0.6** — Replaced red external link icon with "View on Amazon" text link on the avatar/name row.
 - ✅ **2026-03-27 v1.0.9** — Added delete completed items with native browser confirm dialog. "Delete all" button only shows when completed section is expanded.
+- ✅ **2026-03-27 v1.1.2** — Fixed old-format email parser (pre-2024) pulling recommendation widget items instead of actual order items. Subject-line extraction now prioritized over HTML fallback. "Search on Amazon" link added to item cards without product URLs.
+- ✅ **2026-03-27 v1.2.0** — Phase 2 shipped: Amazon product suggestions via Canopy API. Typing items not in order history shows rich product cards with images, prices, and ratings. Selecting adds to shopping list with affiliate-tagged URL.
 
 ## Case Study
 
@@ -55,7 +57,7 @@ https://github.com/2kbach/CARTED
 
 ## Feature Parking Lot
 - ~~**2026-03-27** — Be able to delete completed items *(submitted via PARKED)*~~ ✅ shipped v1.0.9
-- **2026-03-26** — Phase 2: Amazon Product Advertising API for suggesting products not in order history *(planned)*
+- ~~**2026-03-26** — Phase 2: Amazon product suggestions for items not in order history *(planned)*~~ ✅ shipped v1.2.0 (via Canopy API — PA-API requires 3 qualifying sales)
 - **2026-03-26** — Purchase analytics dashboard (spending by category, monthly totals) *(suggested by Claude)*
 - **2026-03-26** — Shared list notifications (push/SMS when partner adds an item) *(suggested by Claude)*
 - **2026-03-26** — Recurring items detection ("you buy this every 3 months") *(suggested by Claude)*
