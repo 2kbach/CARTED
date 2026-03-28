@@ -29,14 +29,6 @@ interface SearchSuggestion {
   purchaseCount: number;
 }
 
-interface AmazonProduct {
-  asin: string;
-  title: string;
-  url: string;
-  imageUrl: string | null;
-  price: string | null;
-}
-
 interface User {
   name?: string | null;
   email?: string | null;
@@ -52,10 +44,7 @@ export default function DashboardClient({ user }: { user: User }) {
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [amazonResults, setAmazonResults] = useState<AmazonProduct[]>([]);
-  const [amazonLoading, setAmazonLoading] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const amazonTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const loadItems = useCallback(async () => {
@@ -70,44 +59,17 @@ export default function DashboardClient({ user }: { user: User }) {
     loadItems();
   }, [loadItems]);
 
-  const searchAmazon = useCallback(async (q: string) => {
-    if (q.length < 3) {
-      setAmazonResults([]);
-      return;
-    }
-    setAmazonLoading(true);
-    try {
-      const res = await fetch(`/api/amazon-search?q=${encodeURIComponent(q)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAmazonResults(data.products ?? []);
-      }
-    } catch {
-      setAmazonResults([]);
-    }
-    setAmazonLoading(false);
-  }, []);
-
   const searchProducts = useCallback(async (q: string) => {
     if (q.length < 2) {
       setSuggestions([]);
-      setAmazonResults([]);
       return;
     }
     const res = await fetch(`/api/orders/search?q=${encodeURIComponent(q)}`);
     if (res.ok) {
       const data = await res.json();
       setSuggestions(data.items);
-
-      // If few order history results, search Amazon too
-      if (data.items.length < 3 && q.length >= 3) {
-        if (amazonTimeout.current) clearTimeout(amazonTimeout.current);
-        amazonTimeout.current = setTimeout(() => searchAmazon(q), 500);
-      } else {
-        setAmazonResults([]);
-      }
     }
-  }, [searchAmazon]);
+  }, []);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -273,14 +235,11 @@ export default function DashboardClient({ user }: { user: User }) {
         )}
 
         {/* Suggestions Dropdown */}
-        {showSuggestions && (suggestions.length > 0 || amazonResults.length > 0 || amazonLoading) && (
+        {showSuggestions && searchQuery.length >= 2 && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-[400px] overflow-y-auto">
             {/* Order History Suggestions */}
             {suggestions.length > 0 && (
               <>
-                <div className="px-4 py-1.5 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Your Order History
-                </div>
                 {suggestions.map((s, i) => (
                   <button
                     key={`order-${i}`}
@@ -303,34 +262,26 @@ export default function DashboardClient({ user }: { user: User }) {
               </>
             )}
 
-            {/* Amazon Search Results */}
-            {(amazonResults.length > 0 || amazonLoading) && (
-              <>
-                <div className="px-4 py-1.5 bg-orange-50 text-xs font-medium text-orange-600 uppercase tracking-wider">
-                  Amazon Suggestions
+            {/* Search on Amazon link — shown when few/no order history matches */}
+            {suggestions.length < 3 && searchQuery.length >= 3 && (
+              <a
+                href={`https://www.amazon.com/s?k=${encodeURIComponent(searchQuery)}&tag=2kbach-20`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setShowSuggestions(false)}
+                className="w-full px-4 py-3 text-left hover:bg-orange-50 flex items-center gap-3 border-t border-gray-100"
+              >
+                <svg className="w-5 h-5 text-orange-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <div>
+                  <div className="font-medium text-sm text-orange-600">
+                    Search &ldquo;{searchQuery}&rdquo; on Amazon
+                  </div>
+                  <div className="text-xs text-gray-400">Find new products to add</div>
                 </div>
-                {amazonLoading && (
-                  <div className="px-4 py-3 text-sm text-gray-400">Searching Amazon...</div>
-                )}
-                {amazonResults.map((p) => (
-                  <button
-                    key={p.asin}
-                    type="button"
-                    onMouseDown={() => addItem(p.title, p.url)}
-                    className="w-full px-4 py-3 text-left hover:bg-orange-50 flex items-center justify-between border-b border-gray-50 last:border-0"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-sm truncate">{p.title}</div>
-                      <div className="text-xs text-orange-500">
-                        {p.price ?? "See price on Amazon"}
-                      </div>
-                    </div>
-                    {p.imageUrl && (
-                      <img src={p.imageUrl} alt="" className="w-10 h-10 object-contain rounded flex-shrink-0 ml-2" />
-                    )}
-                  </button>
-                ))}
-              </>
+              </a>
             )}
           </div>
         )}
@@ -479,7 +430,7 @@ export default function DashboardClient({ user }: { user: User }) {
       )}
 
       {/* Version */}
-      <p className="text-center text-xs text-gray-300 mt-8">v1.1.0</p>
+      <p className="text-center text-xs text-gray-300 mt-8">v1.1.1</p>
     </div>
   );
 }
