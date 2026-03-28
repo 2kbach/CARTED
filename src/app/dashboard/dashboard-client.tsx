@@ -408,31 +408,30 @@ export default function DashboardClient({ user }: { user: User }) {
                 <span className="text-xs text-gray-400">
                   {item.addedBy.name?.split(" ")[0]}
                 </span>
-                <span className="text-xs text-gray-300">·</span>
-                {item.productUrl ? (
-                  <a
-                    href={getAmazonLink(item.productUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-xs text-blue-500 hover:underline"
-                  >
-                    View on Amazon
-                  </a>
-                ) : (
-                  <a
-                    href={`https://www.amazon.com/s?k=${encodeURIComponent(item.name)}&tag=2kbach-20`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-xs text-orange-500 hover:underline"
-                  >
-                    Search on Amazon
-                  </a>
-                )}
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center flex-shrink-0 gap-[40px]">
+              {item.productUrl ? (
+                <a
+                  href={getAmazonLink(item.productUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-blue-500 hover:underline whitespace-nowrap"
+                >
+                  View on Amazon
+                </a>
+              ) : (
+                <a
+                  href={`https://www.amazon.com/s?k=${encodeURIComponent(item.name)}&tag=2kbach-20`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-blue-500 hover:underline whitespace-nowrap"
+                >
+                  Search on Amazon
+                </a>
+              )}
               <button
                 onClick={() => deleteItem(item.id)}
                 className="text-gray-300 hover:text-red-400"
@@ -528,7 +527,7 @@ export default function DashboardClient({ user }: { user: User }) {
       )}
 
       {/* Version */}
-      <p className="text-center text-xs text-gray-300 mt-8">v1.2.0</p>
+      <p className="text-center text-xs text-gray-300 mt-8">v1.2.2</p>
     </div>
   );
 }

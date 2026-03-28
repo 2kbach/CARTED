@@ -151,7 +151,7 @@ export default function ProductDetailModal({
                         href={`https://www.amazon.com/your-orders/order-details?orderID=${entry.orderNumber}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-orange-500 hover:underline"
+                        className="text-xs text-blue-500 hover:underline"
                       >
                         View Order
                       </a>
