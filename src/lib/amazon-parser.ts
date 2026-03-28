@@ -251,15 +251,22 @@ function extractItemFromSubject(subject: string): ParsedOrderItem | null {
     };
   }
 
-  const ofMatch = subject.match(/order of (.+?)(?:\s*\(#|$)/i);
+  // Try: order of "Item Name..." or order of Item Name
+  const ofMatch = subject.match(/order of\s+"?(.+?)(?:\s*\(#|$)/i);
   if (ofMatch) {
-    return {
-      name: ofMatch[1].trim(),
-      price: null,
-      quantity: 1,
-      productUrl: null,
-      imageUrl: null,
-    };
+    const name = ofMatch[1]
+      .replace(/^["']|["']\.?$/g, "")  // strip surrounding quotes and trailing dot
+      .replace(/\.{3}$/, "")            // strip trailing ellipsis
+      .trim();
+    if (name.length >= 3) {
+      return {
+        name,
+        price: null,
+        quantity: 1,
+        productUrl: null,
+        imageUrl: null,
+      };
+    }
   }
 
   return null;
@@ -373,7 +380,15 @@ export function parseAmazonEmail(email: ParsedEmail): ParsedOrder[] {
       items = extractItemsFromText(email.textBody);
     }
 
-    // Strategy 3: If no items from text, try HTML product links
+    // Strategy 3: Fall back to subject line (before HTML, since old-format
+    // emails have recommendation links in HTML that aren't order items)
+    if (items.length === 0) {
+      const subjectItem = extractItemFromSubject(email.subject);
+      if (subjectItem) items.push(subjectItem);
+    }
+
+    // Strategy 4: If still nothing, try HTML product links as last resort
+    // (risky — may pick up recommendation widgets, so only use if subject also failed)
     if (items.length === 0 && email.htmlBody) {
       const urls = extractProductUrls(email.htmlBody);
       for (const [text, url] of urls) {
@@ -385,12 +400,6 @@ export function parseAmazonEmail(email: ParsedEmail): ParsedOrder[] {
           imageUrl: null,
         });
       }
-    }
-
-    // Strategy 4: Fall back to subject line
-    if (items.length === 0) {
-      const subjectItem = extractItemFromSubject(email.subject);
-      if (subjectItem) items.push(subjectItem);
     }
 
     if (items.length === 0) {

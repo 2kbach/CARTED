@@ -235,54 +235,27 @@ export default function DashboardClient({ user }: { user: User }) {
         )}
 
         {/* Suggestions Dropdown */}
-        {showSuggestions && searchQuery.length >= 2 && (
+        {showSuggestions && searchQuery.length >= 2 && suggestions.length > 0 && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-[400px] overflow-y-auto">
-            {/* Order History Suggestions */}
-            {suggestions.length > 0 && (
-              <>
-                {suggestions.map((s, i) => (
-                  <button
-                    key={`order-${i}`}
-                    type="button"
-                    onMouseDown={() => selectSuggestion(s)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-sm truncate">{s.name}</div>
-                      <div className="text-xs text-gray-400">
-                        Ordered {s.purchaseCount}x
-                        {s.lastPrice && ` \u00B7 $${(s.lastPrice / 100).toFixed(2)}`}
-                      </div>
-                    </div>
-                    {s.imageUrl && (
-                      <img src={s.imageUrl} alt="" className="w-10 h-10 object-contain rounded flex-shrink-0 ml-2" />
-                    )}
-                  </button>
-                ))}
-              </>
-            )}
-
-            {/* Search on Amazon link — shown when few/no order history matches */}
-            {suggestions.length < 3 && searchQuery.length >= 3 && (
-              <a
-                href={`https://www.amazon.com/s?k=${encodeURIComponent(searchQuery)}&tag=2kbach-20`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setShowSuggestions(false)}
-                className="w-full px-4 py-3 text-left hover:bg-orange-50 flex items-center gap-3 border-t border-gray-100"
+            {suggestions.map((s, i) => (
+              <button
+                key={`order-${i}`}
+                type="button"
+                onMouseDown={() => selectSuggestion(s)}
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0"
               >
-                <svg className="w-5 h-5 text-orange-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <div>
-                  <div className="font-medium text-sm text-orange-600">
-                    Search &ldquo;{searchQuery}&rdquo; on Amazon
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-sm truncate">{s.name}</div>
+                  <div className="text-xs text-gray-400">
+                    Ordered {s.purchaseCount}x
+                    {s.lastPrice && ` \u00B7 $${(s.lastPrice / 100).toFixed(2)}`}
                   </div>
-                  <div className="text-xs text-gray-400">Find new products to add</div>
                 </div>
-              </a>
-            )}
+                {s.imageUrl && (
+                  <img src={s.imageUrl} alt="" className="w-10 h-10 object-contain rounded flex-shrink-0 ml-2" />
+                )}
+              </button>
+            ))}
           </div>
         )}
       </form>
@@ -318,19 +291,27 @@ export default function DashboardClient({ user }: { user: User }) {
                 <span className="text-xs text-gray-400">
                   {item.addedBy.name?.split(" ")[0]}
                 </span>
-                {item.productUrl && (
-                  <>
-                    <span className="text-xs text-gray-300">·</span>
-                    <a
-                      href={getAmazonLink(item.productUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-xs text-blue-500 hover:underline"
-                    >
-                      View on Amazon
-                    </a>
-                  </>
+                <span className="text-xs text-gray-300">·</span>
+                {item.productUrl ? (
+                  <a
+                    href={getAmazonLink(item.productUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-xs text-blue-500 hover:underline"
+                  >
+                    View on Amazon
+                  </a>
+                ) : (
+                  <a
+                    href={`https://www.amazon.com/s?k=${encodeURIComponent(item.name)}&tag=2kbach-20`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-xs text-orange-500 hover:underline"
+                  >
+                    Search on Amazon
+                  </a>
                 )}
               </div>
             </div>
